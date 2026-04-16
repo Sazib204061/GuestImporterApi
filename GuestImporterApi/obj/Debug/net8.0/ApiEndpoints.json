@@ -1,0 +1,60 @@
+[
+  {
+    "ContainingType": "GuestImporterApi.Controllers.ImportController",
+    "Method": "StartImport",
+    "RelativePath": "api/import/guests",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "GuestImporterApi.Controllers.ImportController\u002BStartImportRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "GuestImporterApi.Controllers.ImportController",
+    "Method": "Cancel",
+    "RelativePath": "api/import/guests/{jobId}/cancel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "GuestImporterApi.Controllers.ImportController",
+    "Method": "GetProgress",
+    "RelativePath": "api/import/guests/{jobId}/progress",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "GuestImporterApi.Controllers.ImportController",
+    "Method": "StopAllImports",
+    "RelativePath": "api/import/guests/stop-all",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]
