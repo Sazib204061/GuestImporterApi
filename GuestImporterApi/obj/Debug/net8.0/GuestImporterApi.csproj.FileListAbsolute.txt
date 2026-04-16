@@ -387,3 +387,4 @@ G:\SR\DataImporterFormCSV\GuestImporterApi\obj\Debug\net8.0\refint\GuestImporter
 G:\SR\DataImporterFormCSV\GuestImporterApi\obj\Debug\net8.0\GuestImporterApi.pdb
 G:\SR\DataImporterFormCSV\GuestImporterApi\obj\Debug\net8.0\GuestImporterApi.genruntimeconfig.cache
 G:\SR\DataImporterFormCSV\GuestImporterApi\obj\Debug\net8.0\ref\GuestImporterApi.dll
+G:\SR\DataImporterFormCSV\GuestImporterApi\obj\Debug\net8.0\GuestImporterApi.sourcelink.json

@@ -82,7 +82,7 @@
         }
       }
     },
-    "/api/import/guests/stop-all": {
+    "/api/import/guests/stop-all-background-jobs": {
       "post": {
         "tags": [
           "Import"

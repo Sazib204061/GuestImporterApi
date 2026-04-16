@@ -2,7 +2,9 @@
 using CsvHelper.Configuration;
 using Hangfire;
 using Npgsql;
+using NpgsqlTypes;
 using System.Globalization;
+using System.Text;
 
 namespace GuestImporterApi.Services;
 
@@ -51,8 +53,9 @@ public class GuestCsvImporter
         progress.IsCompleted = false;
         progress.Error = null;
 
-        var connString = _config.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Missing connection string Default");
+        var guestMasterConnString = _config.GetConnectionString("NTouchGuestMasterDB")
+            ?? _config.GetConnectionString("Default")
+            ?? throw new InvalidOperationException("Missing connection string NTouchGuestMasterDB (or Default).");
 
         try
         {
@@ -77,7 +80,7 @@ public class GuestCsvImporter
 
             var buffer = new List<GuestCsvRow>(batchSize);
 
-            await using var conn = new NpgsqlConnection(connString);
+            await using var conn = new NpgsqlConnection(guestMasterConnString);
             await conn.OpenAsync(ct);
 
             // Iterate records one-by-one (streaming)
@@ -127,7 +130,7 @@ public class GuestCsvImporter
         }
     }
 
-    // Fast bulk insert using COPY BINARY
+    // Batch insert directly into target table and ignore duplicates on unique identity key.
     private static async Task<int> CopyBatchAsync(
         NpgsqlConnection conn,
         List<GuestCsvRow> batch,
@@ -135,36 +138,71 @@ public class GuestCsvImporter
         ILogger<GuestCsvImporter> logger,
         ImportProgress progress)
     {
-        // NOTE: column order must match table columns in COPY command
-        // Also: use quoting for PascalCase table/columns if created with quotes.
-        //var copyCmd = """
-        //    COPY "Guest" ("GuestId","FirstName","LastName","Email","Phone","CreatedAt")
-        //    FROM STDIN (FORMAT BINARY)
-        //    """;
+        if (batch.Count == 0)
+            return 0;
 
-        var copyCmd = """
-            COPY "Guest"
-            ("Id","guestName","IDNumber","IDIssuePlace","Phone","PassportNumber","Name_ar")
-            FROM STDIN (FORMAT BINARY)
-            """;
+        var sql = new StringBuilder();
+        sql.Append(
+            "INSERT INTO \"BookingGuestsMasters10M\" " +
+            "(\"Id\",\"FirstName\",\"LastName\",\"Phone\",\"IdentityType\",\"IDSeries\",\"IdentityNumber\",\"DateOfBirth\",\"IsActive\",\"CustomerType\",\"CountryName_ar\",\"CountryName_en\",\"IdentityExpiryDate\",\"IdentityIssuePlace\",\"Email\",\"Language\",\"Gender\",\"Address\",\"City\",\"ZipCode\",\"HowDidYouFind\",\"Comment\",\"ExtraProperties\",\"ConcurrencyStamp\",\"CreationTime\",\"IsDeleted\") VALUES ");
 
+        await using var cmd = new NpgsqlCommand { Connection = conn };
 
-        await using var writer = await conn.BeginBinaryImportAsync(copyCmd, ct);
-
-        foreach (var r in batch)
+        for (var i = 0; i < batch.Count; i++)
         {
-            await writer.StartRowAsync(ct);
-            //Id auto generate by PostgreSQL
-            writer.Write(Guid.NewGuid(), NpgsqlTypes.NpgsqlDbType.Uuid);
-            writer.Write(r.guestName, NpgsqlTypes.NpgsqlDbType.Text);
-            writer.Write(r.IDNumber, NpgsqlTypes.NpgsqlDbType.Text);
-            writer.Write(r.IDIssuePlace, NpgsqlTypes.NpgsqlDbType.Text);
-            writer.Write(r.Phone, NpgsqlTypes.NpgsqlDbType.Text);
-            writer.Write(r.PassportNumber, NpgsqlTypes.NpgsqlDbType.Text);
-            writer.Write(r.Name_ar, NpgsqlTypes.NpgsqlDbType.Text);
+            var r = batch[i];
+            var (firstName, lastName) = SplitName(r.guestName);
+            var now = DateTime.UtcNow;
+
+            if (i > 0)
+                sql.Append(',');
+
+            var rowValues = new (object? Value, NpgsqlDbType Type)[]
+            {
+                (Guid.NewGuid(), NpgsqlDbType.Uuid),
+                (firstName, NpgsqlDbType.Text),
+                (lastName, NpgsqlDbType.Text),
+                (CleanOrNull(r.Phone), NpgsqlDbType.Text),
+                (1, NpgsqlDbType.Integer), // IdentityType = 1 means national ID
+                (null, NpgsqlDbType.Bigint),
+                (CleanOrNull(r.IDNumber), NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Date),
+                (true, NpgsqlDbType.Boolean),
+                (null, NpgsqlDbType.Integer),
+                (CleanOrNull(r.Name_ar), NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Date),
+                (CleanOrNull(r.IDIssuePlace), NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Integer),
+                (null, NpgsqlDbType.Integer),
+                (null, NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Text),
+                (null, NpgsqlDbType.Integer),
+                (null, NpgsqlDbType.Text),
+                ("{}", NpgsqlDbType.Jsonb),
+                (Guid.NewGuid().ToString("N"), NpgsqlDbType.Text),
+                (now, NpgsqlDbType.TimestampTz),
+                (false, NpgsqlDbType.Boolean)
+            };
+
+            sql.Append('(');
+            for (var col = 0; col < rowValues.Length; col++)
+            {
+                if (col > 0)
+                    sql.Append(',');
+
+                var paramName = $"p_{i}_{col}";
+                sql.Append(AddParameter(cmd, paramName, rowValues[col].Value, rowValues[col].Type));
+            }
+            sql.Append(')');
         }
 
-        await writer.CompleteAsync(ct);
+        sql.Append(" ON CONFLICT (\"IdentityType\",\"IdentityNumber\") DO NOTHING");
+        cmd.CommandText = sql.ToString();
+
+        var inserted = await cmd.ExecuteNonQueryAsync(ct);
 
         //logger.LogInformation(
         //    "Batch inserted. Read={Read}, Inserted={Inserted}, LastBatch={Batch}, Time={Time}",
@@ -177,9 +215,41 @@ public class GuestCsvImporter
             "Batch {BatchSize} inserted successfully. Total read: {TotalRead}, Total inserted: {TotalInserted}, Elapsed: {ElapsedMs}ms",
             batch.Count,
             progress.TotalRead,
-            progress.TotalInserted,
+            progress.TotalInserted + inserted,
             DateTimeOffset.UtcNow.Subtract(progress.LastUpdateUtc).TotalMilliseconds);
 
-        return batch.Count;
+        return inserted;
+    }
+
+    private static (string FirstName, string LastName) SplitName(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return (string.Empty, string.Empty);
+
+        var parts = fullName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length == 0)
+            return (string.Empty, string.Empty);
+
+        var firstName = parts[0];
+        var lastName = parts.Length > 1
+            ? string.Join(' ', parts.Skip(1))
+            : string.Empty;
+
+        return (firstName, lastName);
+    }
+
+    private static string? CleanOrNull(string? value)
+    {
+        var clean = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        return clean;
+    }
+
+    private static string AddParameter(NpgsqlCommand cmd, string name, object? value, NpgsqlDbType type)
+    {
+        var p = cmd.Parameters.Add(name, type);
+        p.Value = value ?? DBNull.Value;
+        return "@" + name;
     }
 }

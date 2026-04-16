@@ -50,7 +50,7 @@
   {
     "ContainingType": "GuestImporterApi.Controllers.ImportController",
     "Method": "StopAllImports",
-    "RelativePath": "api/import/guests/stop-all",
+    "RelativePath": "api/import/guests/stop-all-background-jobs",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
