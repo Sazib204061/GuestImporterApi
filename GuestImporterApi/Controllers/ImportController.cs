@@ -140,7 +140,7 @@ public class ImportController : ControllerBase
         return NotFound(new { jobId, cancelled = false, reason = "No active Hangfire/local token job found." });
     }
 
-    [HttpPost("guests/stop-all")]
+    [HttpPost("guests/stop-all-background-jobs")]
     public ActionResult StopAllImports()
     {
         var cancelledLocalTokens = 0;
