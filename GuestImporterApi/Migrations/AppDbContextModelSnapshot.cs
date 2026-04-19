@@ -24,7 +24,7 @@ namespace GuestImporterApi.Migrations
 
             modelBuilder.Entity("GuestImporterApi.Data.Guest", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid?>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 

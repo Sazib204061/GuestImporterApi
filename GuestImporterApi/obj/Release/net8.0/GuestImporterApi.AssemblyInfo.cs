@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GuestImporterApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+83879785f5f077f585ee2880089be36cb0d1dbe2")]
 [assembly: System.Reflection.AssemblyProductAttribute("GuestImporterApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GuestImporterApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

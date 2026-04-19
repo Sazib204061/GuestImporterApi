@@ -143,7 +143,7 @@ public class GuestCsvImporter
 
         var sql = new StringBuilder();
         sql.Append(
-            "INSERT INTO \"BookingGuestsMasters10M\" " +
+            "INSERT INTO \"MasterGuests\" " +
             "(\"Id\",\"FirstName\",\"LastName\",\"Phone\",\"IdentityType\",\"IDSeries\",\"IdentityNumber\",\"DateOfBirth\",\"IsActive\",\"CustomerType\",\"CountryName_ar\",\"CountryName_en\",\"IdentityExpiryDate\",\"IdentityIssuePlace\",\"Email\",\"Language\",\"Gender\",\"Address\",\"City\",\"ZipCode\",\"HowDidYouFind\",\"Comment\",\"ExtraProperties\",\"ConcurrencyStamp\",\"CreationTime\",\"IsDeleted\") VALUES ");
 
         await using var cmd = new NpgsqlCommand { Connection = conn };

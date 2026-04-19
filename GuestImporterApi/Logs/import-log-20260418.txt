@@ -1,0 +1,2 @@
+2026-04-18 18:55:49.852 +06:00 [INF] Removed 5 outdated record(s) from 'aggregatedcounter' table.
+2026-04-18 18:55:50.902 +06:00 [INF] Removed 22 outdated record(s) from 'job' table.
